@@ -232,7 +232,7 @@ export default function DepositPage() {
                         d.status === "pending" ? "bg-amber-500/15 text-amber-400" :
                         "bg-red-500/15 text-red-400"
                       }`}>
-                        {d.status}
+                        {d.status === "approved" ? "completed" : d.status}
                       </span>
 
                     </div>
