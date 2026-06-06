@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatNumber } from "@/lib/utils";
+import { getSupabase } from "@/lib/supabase";
 
 export default function DepositPage() {
   const { user, deposit } = useAuth();
@@ -16,6 +17,21 @@ export default function DepositPage() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<"form" | "instructions">("form");
+  const [myDeposits, setMyDeposits] = useState<any[]>([]);
+  const loadDeposits = async () => {
+    if (!user?.id) return;
+    const sb = await getSupabase();
+    const { data } = await sb.from("deposits").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    setMyDeposits(data || []);
+  };
+  useEffect(() => { loadDeposits(); }, [user?.id]);
+  const handleCancel = async (id: string, amount: number) => {
+    const sb = await getSupabase();
+    await sb.from("deposits").delete().eq("id", id).eq("user_id", user?.id).eq("status", "pending");
+    await sb.from("transactions").delete().eq("user_id", user?.id).eq("type", "deposit").eq("amount", amount).eq("status", "pending");
+    toast("success", "Deposit cancelled");
+    loadDeposits();
+  };
 
   async function handleSubmit() {
     const numAmount = parseFloat(amount);
@@ -202,31 +218,36 @@ export default function DepositPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Deposit Requests</CardTitle>
+            <CardTitle>My Deposit Requests</CardTitle>
           </CardHeader>
           <CardContent>
-            {(user?.transactions || []).filter((t: any) => t.type === "deposit").length > 0 ? (
+            {myDeposits.length > 0 ? (
               <div className="space-y-2">
-                {(user?.transactions || [])
-                  .filter((t: any) => t.type === "deposit")
-                  .slice(0, 5)
-                  .map((tx: any) => (
-                    <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50">
-                      <div>
-                        <p className="text-sm font-medium text-slate-200">Rs {formatNumber(tx.amount)}</p>
-                        <p className="text-xs text-slate-500">{tx.description || tx.method}</p>
-                      </div>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        tx.status === "completed" || tx.status === "approved"
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : tx.status === "pending"
-                          ? "bg-amber-500/15 text-amber-400"
-                          : "bg-red-500/15 text-red-400"
-                      }`}>
-                        {tx.status === "approved" ? "completed" : tx.status}
-                      </span>
+                {myDeposits.map((d: any) => (
+                  <div key={d.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50">
+                    <div>
+                      <p className="text-sm font-medium text-slate-200">Rs {formatNumber(d.amount)}</p>
+                      <p className="text-xs text-slate-500">{d.method} &bull; {new Date(d.created_at).toLocaleDateString()}</p>
+                      {d.proof_url && (
+                        <a href={d.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:underline">View proof</a>
+                      )}
                     </div>
-                  ))}
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        d.status === "approved" ? "bg-emerald-500/15 text-emerald-400" :
+                        d.status === "pending" ? "bg-amber-500/15 text-amber-400" :
+                        "bg-red-500/15 text-red-400"
+                      }`}>
+                        {d.status}
+                      </span>
+                      {d.status === "pending" && (
+                        <button onClick={() => handleCancel(d.id, d.amount)} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 transition-colors">
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-8">

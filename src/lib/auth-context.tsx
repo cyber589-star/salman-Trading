@@ -109,6 +109,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user_id: user.id, amount, method, proof_url: proofUrl, status: "pending", username: user.username,
     });
     if (error) return false;
+
+    await sb.from("transactions").insert({
+      user_id: user.id, type: "deposit", amount, status: "pending", method,
+      description: "Deposit pending approval",
+    });
+
     await refreshUser();
     return true;
   }, [user, refreshUser]);
