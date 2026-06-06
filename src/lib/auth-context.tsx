@@ -25,10 +25,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function usernameToEmail(username: string): string {
-  return "u" + Array.from(username).map((c) => c.charCodeAt(0).toString(36)).join("") + "@st.com";
-}
-
 function generateDeviceId(): string {
   let id = localStorage.getItem("device_id");
   if (!id) {
@@ -75,17 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const sb = await getSupabase();
-      const { data: profile } = await sb.from("profiles").select("id").eq("username", username).single();
-      if (!profile) { setIsLoading(false); return false; }
-
-      const safeEmail = usernameToEmail(username);
-      const { error } = await sb.auth.signInWithPassword({
-        email: safeEmail, password,
+      const res = await fetch("/api/auth", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", username, password }),
       });
-      if (error) { setIsLoading(false); return false; }
+      if (!res.ok) { setIsLoading(false); return false; }
 
-      await fetchProfile(profile.id);
+      const { access_token, refresh_token, userId } = await res.json();
+      const sb = await getSupabase();
+      await sb.auth.setSession({ access_token, refresh_token });
+      await fetchProfile(userId);
       setIsLoading(false);
       return true;
     } catch { setIsLoading(false); return false; }
@@ -94,35 +89,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (username: string, mobile: string, password: string) => {
     setIsLoading(true);
     try {
-      const sb = await getSupabase();
-      const existing = await sb.from("profiles").select("username").eq("username", username).maybeSingle();
-      if (existing.data) { setIsLoading(false); return { success: false, error: "Username already taken" }; }
-
-      const existingMobile = await sb.from("profiles").select("id").eq("mobile", mobile).maybeSingle();
-      if (existingMobile.data) { setIsLoading(false); return { success: false, error: "Mobile number already registered" }; }
-
       const deviceId = generateDeviceId();
-      const dc = await sb.from("profiles").select("id").eq("device_id", deviceId).maybeSingle();
-      if (dc.data) { setIsLoading(false); return { success: false, error: "Account exists on this device" }; }
-
-      const safeEmail = usernameToEmail(username);
-      const { data: authData, error: authError } = await sb.auth.signUp({
-        email: safeEmail, password,
-        options: { data: { username, mobile } },
+      const res = await fetch("/api/auth", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "register", username, mobile, password, deviceId }),
       });
-      if (authError || !authData.user) { setIsLoading(false); return { success: false, error: authError?.message || "Registration failed" }; }
+      const data = await res.json();
+      if (!res.ok) { setIsLoading(false); return { success: false, error: data.error || "Registration failed" }; }
 
-      await fetch("/api/confirm-registration", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: authData.user.id }),
-      });
-
-      await sb.from("profiles").insert({
-        id: authData.user.id, username, mobile, balance: 0, total_invested: 0, total_earnings: 0, role: "user", device_id: deviceId,
-      });
-
-      await fetchProfile(authData.user.id);
+      const sb = await getSupabase();
+      await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+      await fetchProfile(data.userId);
       setIsLoading(false);
       return { success: true };
     } catch (err: any) { setIsLoading(false); return { success: false, error: err?.message }; }
