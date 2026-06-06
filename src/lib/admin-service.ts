@@ -24,7 +24,7 @@ export async function approveDeposit(depositId: string, userId: string, amount: 
 
   const { data: profile } = await sb.from("profiles").select("balance").eq("id", userId).single();
   const currentBalance = toNum(profile?.balance);
-  const { error: balanceError } = await sb.from("profiles").update({ balance: currentBalance + amount }).eq("id", userId);
+  const { error: balanceError } = await sb.from("profiles").update({ balance: currentBalance + toNum(amount) }).eq("id", userId);
   if (balanceError) throw balanceError;
 
   await sb.from("transactions").update({ status: "completed", description: "Deposit approved", updated_at: new Date().toISOString() }).eq("user_id", userId).eq("type", "deposit").eq("amount", amount).eq("status", "pending");
