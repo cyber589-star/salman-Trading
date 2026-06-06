@@ -25,6 +25,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function usernameToEmail(username: string): string {
+  return "u" + Array.from(username).map((c) => c.charCodeAt(0).toString(36)).join("") + "@st.com";
+}
+
 function generateDeviceId(): string {
   let id = localStorage.getItem("device_id");
   if (!id) {
@@ -75,8 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: profile } = await sb.from("profiles").select("id").eq("username", username).single();
       if (!profile) { setIsLoading(false); return false; }
 
+      const safeEmail = usernameToEmail(username);
       const { error } = await sb.auth.signInWithPassword({
-        email: `${username}@salman-trading.com`, password,
+        email: safeEmail, password,
       });
       if (error) { setIsLoading(false); return false; }
 
@@ -97,8 +102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const dc = await sb.from("profiles").select("id").eq("device_id", deviceId).maybeSingle();
       if (dc.data) { setIsLoading(false); return { success: false, error: "Account exists on this device" }; }
 
+      const safeEmail = usernameToEmail(username);
       const { data: authData, error: authError } = await sb.auth.signUp({
-        email: `${username}@salman-trading.com`, password,
+        email: safeEmail, password,
         options: { data: { username, mobile } },
       });
       if (authError || !authData.user) { setIsLoading(false); return { success: false, error: authError?.message || "Registration failed" }; }
