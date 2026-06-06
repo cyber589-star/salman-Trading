@@ -13,9 +13,8 @@ interface UserProfile extends Profile {
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  googleLogin: () => Promise<void>;
   logout: () => void;
   deposit: (amount: number, method: string, proofFile?: File) => Promise<boolean>;
   invest: (packageId: number) => Promise<boolean>;
@@ -25,15 +24,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-function generateDeviceId(): string {
-  let id = localStorage.getItem("device_id");
-  if (!id) {
-    id = crypto.randomUUID?.() || Math.random().toString(36).substring(2, 15);
-    localStorage.setItem("device_id", id);
-  }
-  return id;
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -55,28 +45,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (cached) {
       try { setUser(JSON.parse(cached)); } catch {}
     }
-    getSupabase().then(sb =>
-      sb.auth.getSession().then(({ data }: { data: { session: any } }) => {
-        if (data.session?.user) fetchProfile(data.session.user.id);
-        setIsLoading(false);
-      })
-    );
-  }, [fetchProfile]);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     if (user) localStorage.setItem("st_user", JSON.stringify(user));
     else localStorage.removeItem("st_user");
   }, [user]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     setIsLoading(true);
     try {
-      const sb = await getSupabase();
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) { setIsLoading(false); return { success: false, error: error.message }; }
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setIsLoading(false); return { success: false, error: data.error || "Login failed" }; }
 
-      const { data } = await sb.auth.getSession();
-      if (data.session?.user) await fetchProfile(data.session.user.id);
+      await fetchProfile(data.userId);
       setIsLoading(false);
       return { success: true };
     } catch (err: any) { setIsLoading(false); return { success: false, error: err?.message }; }
@@ -88,35 +76,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ action: "register", email, username, password }),
       });
       const data = await res.json();
       if (!res.ok) { setIsLoading(false); return { success: false, error: data.error || "Registration failed" }; }
 
-      const sb = await getSupabase();
-      await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
       await fetchProfile(data.userId);
       setIsLoading(false);
       return { success: true };
     } catch (err: any) { setIsLoading(false); return { success: false, error: err?.message }; }
   }, [fetchProfile]);
 
-  const refreshUser = useCallback(async () => {
-    const sb = await getSupabase();
-    const { data } = await sb.auth.getSession();
-    if (data.session?.user) await fetchProfile(data.session.user.id);
-  }, [fetchProfile]);
-
-  const googleLogin = useCallback(async () => {
-    const sb = await getSupabase();
-    await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin + "/dashboard" } });
-  }, []);
-
   const logout = useCallback(() => {
-    getSupabase().then(sb => sb.auth.signOut()).catch(() => {});
     setUser(null);
     localStorage.removeItem("st_user");
   }, []);
+
+  const refreshUser = useCallback(async () => {
+    if (user?.id) await fetchProfile(user.id);
+  }, [user?.id, fetchProfile]);
 
   const deposit = useCallback(async (amount: number, method: string, proofFile?: File): Promise<boolean> => {
     if (!user) return false;
@@ -191,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, refreshUser]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, googleLogin, logout, deposit, invest, withdraw, updateProfile, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, deposit, invest, withdraw, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,10 +1,39 @@
--- Run this in Supabase SQL Editor
+-- Run this in Supabase SQL Editor (FULL RESET)
+-- DANGER: This will disable RLS and remove auth.users dependency
 
--- Profiles table
+-- Drop all RLS policies first
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can view own deposits" ON deposits;
+DROP POLICY IF EXISTS "Users can insert own deposits" ON deposits;
+DROP POLICY IF EXISTS "Admins can update deposits" ON deposits;
+DROP POLICY IF EXISTS "Users can view own investments" ON investments;
+DROP POLICY IF EXISTS "Users can insert own investments" ON investments;
+DROP POLICY IF EXISTS "Users can view own transactions" ON transactions;
+DROP POLICY IF EXISTS "System can insert transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can view own withdrawals" ON withdrawals;
+DROP POLICY IF EXISTS "Users can insert own withdrawals" ON withdrawals;
+DROP POLICY IF EXISTS "Admins can update withdrawals" ON withdrawals;
+DROP POLICY IF EXISTS "Anyone can read settings" ON settings;
+
+-- Disable RLS on all tables
+ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE deposits DISABLE ROW LEVEL SECURITY;
+ALTER TABLE investments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE withdrawals DISABLE ROW LEVEL SECURITY;
+
+-- Add password_hash column and remove auth.users dependency
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE profiles ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
+
+-- Recreate tables if they don't exist
 CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
-  mobile TEXT NOT NULL,
+  mobile TEXT DEFAULT '',
+  password_hash TEXT,
   balance DECIMAL(12,2) DEFAULT 0,
   total_invested DECIMAL(12,2) DEFAULT 0,
   total_earnings DECIMAL(12,2) DEFAULT 0,
@@ -14,7 +43,6 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Packages table
 CREATE TABLE IF NOT EXISTS packages (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -27,10 +55,9 @@ CREATE TABLE IF NOT EXISTS packages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Deposits table
 CREATE TABLE IF NOT EXISTS deposits (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id) NOT NULL,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   amount DECIMAL(12,2) NOT NULL,
   method TEXT NOT NULL DEFAULT 'jazzcash',
   proof_url TEXT,
@@ -40,10 +67,9 @@ CREATE TABLE IF NOT EXISTS deposits (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Investments table
 CREATE TABLE IF NOT EXISTS investments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id) NOT NULL,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   package_id INT REFERENCES packages(id) NOT NULL,
   package_name TEXT NOT NULL,
   amount DECIMAL(12,2) NOT NULL,
@@ -56,10 +82,9 @@ CREATE TABLE IF NOT EXISTS investments (
   last_earning_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Transactions table
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id) NOT NULL,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('deposit', 'withdrawal', 'investment', 'earning')),
   amount DECIMAL(12,2) NOT NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'rejected')),
@@ -68,10 +93,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Withdrawals table
 CREATE TABLE IF NOT EXISTS withdrawals (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id) NOT NULL,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   amount DECIMAL(12,2) NOT NULL,
   account_number TEXT NOT NULL,
   account_name TEXT NOT NULL,
@@ -82,7 +106,6 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Settings table
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -111,87 +134,11 @@ INSERT INTO settings (key, value) VALUES
   ('min_withdrawal', '1000')
 ON CONFLICT (key) DO NOTHING;
 
--- Insert default admin (run after creating admin user)
--- UPDATE profiles SET role = 'admin' WHERE username = 'admin';
-
--- Enable Row Level Security
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deposits ENABLE ROW LEVEL SECURITY;
-ALTER TABLE investments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE withdrawals ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for profiles
-CREATE POLICY "Users can view own profile"
-  ON profiles FOR SELECT
-  USING (auth.uid() = id OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
-CREATE POLICY "Users can update own profile"
-  ON profiles FOR UPDATE
-  USING (auth.uid() = id);
-
--- RLS Policies for deposits
-CREATE POLICY "Users can view own deposits"
-  ON deposits FOR SELECT
-  USING (auth.uid() = user_id OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
-CREATE POLICY "Users can insert own deposits"
-  ON deposits FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Admins can update deposits"
-  ON deposits FOR UPDATE
-  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
--- RLS Policies for investments
-CREATE POLICY "Users can view own investments"
-  ON investments FOR SELECT
-  USING (auth.uid() = user_id OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
-CREATE POLICY "Users can insert own investments"
-  ON investments FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
--- RLS Policies for transactions
-CREATE POLICY "Users can view own transactions"
-  ON transactions FOR SELECT
-  USING (auth.uid() = user_id OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
-CREATE POLICY "System can insert transactions"
-  ON transactions FOR INSERT
-  WITH CHECK (auth.uid() = user_id OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
--- RLS Policies for withdrawals
-CREATE POLICY "Users can view own withdrawals"
-  ON withdrawals FOR SELECT
-  USING (auth.uid() = user_id OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
-CREATE POLICY "Users can insert own withdrawals"
-  ON withdrawals FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Admins can update withdrawals"
-  ON withdrawals FOR UPDATE
-  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
-
--- RLS for settings (anyone can read)
-CREATE POLICY "Anyone can read settings"
-  ON settings FOR SELECT
-  USING (true);
-
 -- Create storage bucket for payment proofs
 INSERT INTO storage.buckets (id, name, public) VALUES ('payment-proofs', 'payment-proofs', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY "Anyone can upload payment proofs"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'payment-proofs');
-
-CREATE POLICY "Anyone can view payment proofs"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'payment-proofs');
-
--- Helper functions for the earnings cron job
+-- Helper function for earnings cron job
 CREATE OR REPLACE FUNCTION add_balance(user_id UUID, amount DECIMAL)
 RETURNS void AS $$
 BEGIN

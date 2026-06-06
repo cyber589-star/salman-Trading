@@ -2,6 +2,7 @@ export interface Profile {
   id: string;
   username: string;
   mobile: string;
+  password_hash?: string;
   balance: number;
   total_invested: number;
   total_earnings: number;
