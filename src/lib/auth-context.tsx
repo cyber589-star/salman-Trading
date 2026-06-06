@@ -85,22 +85,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (email: string, username: string, password: string) => {
     setIsLoading(true);
     try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setIsLoading(false); return { success: false, error: data.error || "Registration failed" }; }
+
       const sb = await getSupabase();
-      const existing = await sb.from("profiles").select("id").eq("username", username).maybeSingle();
-      if (existing.data) { setIsLoading(false); return { success: false, error: "Username already taken" }; }
-
-      const { data: authData, error: authError } = await sb.auth.signUp({
-        email, password, options: { data: { username } },
-      });
-      if (authError) { setIsLoading(false); return { success: false, error: authError.message }; }
-      if (!authData.user) { setIsLoading(false); return { success: false, error: "Registration failed" }; }
-
-      await sb.from("profiles").insert({
-        id: authData.user.id, username, mobile: "", balance: 0, total_invested: 0, total_earnings: 0, role: "user", device_id: generateDeviceId(),
-      });
-
-      const { data } = await sb.auth.getSession();
-      if (data.session?.user) await fetchProfile(data.session.user.id);
+      await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+      await fetchProfile(data.userId);
       setIsLoading(false);
       return { success: true };
     } catch (err: any) { setIsLoading(false); return { success: false, error: err?.message }; }
