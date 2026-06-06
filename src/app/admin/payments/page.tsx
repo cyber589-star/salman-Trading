@@ -79,8 +79,8 @@ export default function AdminPaymentsPage() {
                     <td className="p-4">
                       {d.proof_url ? (
                         <a href={d.proof_url} target="_blank" rel="noopener noreferrer"
-                          className="text-emerald-400 hover:text-emerald-300 underline text-xs">
-                          View Proof
+                          className="block w-16 h-16 rounded-lg overflow-hidden border border-slate-700 hover:border-emerald-500/50 transition-all">
+                          <img src={d.proof_url} alt="Payment proof" className="w-full h-full object-cover" />
                         </a>
                       ) : <span className="text-slate-500">No proof</span>}
                     </td>
