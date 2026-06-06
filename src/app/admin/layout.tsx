@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
           </div>
         </aside>
-        <main className="ml-64 flex-1 p-6">
+        <main className="ml-64 flex-1 p-4 sm:p-6 responsive-table">
           {children}
         </main>
       </div>

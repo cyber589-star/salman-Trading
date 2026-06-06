@@ -2,14 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAllCustomers } from "@/lib/admin-service";
+import { getAllCustomers, deleteCustomer } from "@/lib/admin-service";
 import type { Profile } from "@/lib/database.types";
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
 
-  useEffect(() => { getAllCustomers().then(setCustomers); }, []);
+  const load = async () => setCustomers(await getAllCustomers());
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this customer and all their data?")) return;
+    await deleteCustomer(id);
+    await load();
+  };
 
   const filtered = customers.filter((c) =>
     c.username.toLowerCase().includes(search.toLowerCase()) ||
@@ -38,6 +45,7 @@ export default function AdminCustomersPage() {
                   <th className="p-4 font-medium">Total Invested</th>
                   <th className="p-4 font-medium">Total Earnings</th>
                   <th className="p-4 font-medium">Joined</th>
+                  <th className="p-4 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -49,10 +57,15 @@ export default function AdminCustomersPage() {
                     <td className="p-4 text-blue-400">Rs {Number(c.total_invested).toLocaleString()}</td>
                     <td className="p-4 text-amber-400">Rs {Number(c.total_earnings).toLocaleString()}</td>
                     <td className="p-4 text-slate-400">{new Date(c.created_at).toLocaleDateString()}</td>
+                    <td className="p-4">
+                      <button onClick={() => handleDelete(c.id)} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 transition-colors">
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={6} className="p-8 text-center text-slate-500">No customers found</td></tr>
+                  <tr><td colSpan={7} className="p-8 text-center text-slate-500">No customers found</td></tr>
                 )}
               </tbody>
             </table>

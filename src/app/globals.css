@@ -82,3 +82,27 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
+/* Mobile responsive table */
+@media (max-width: 768px) {
+  .responsive-table table {
+    font-size: 11px;
+  }
+  .responsive-table th,
+  .responsive-table td {
+    padding: 8px 6px !important;
+    white-space: nowrap;
+  }
+  .responsive-table img {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .responsive-table button,
+  .responsive-table .btn-like {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+  }
+  h1 { font-size: 1.25rem !important; }
+  .card-padding { padding: 1rem !important; }
+  .text-sm-mobile { font-size: 0.75rem; }
+}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getAllDeposits, approveDeposit, rejectDeposit } from "@/lib/admin-service";
+import { getAllDeposits, approveDeposit, rejectDeposit, deleteDeposit } from "@/lib/admin-service";
 
 export default function AdminPaymentsPage() {
   const [deposits, setDeposits] = useState<any[]>([]);
@@ -25,6 +25,12 @@ export default function AdminPaymentsPage() {
 
   const handleReject = async (id: string) => {
     await rejectDeposit(id);
+    await load();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this deposit record?")) return;
+    await deleteDeposit(id);
     await load();
   };
 
@@ -95,7 +101,7 @@ export default function AdminPaymentsPage() {
                       </span>
                     </td>
                     <td className="p-4">
-                      {d.status === "pending" && (
+                      {d.status === "pending" ? (
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => handleApprove(d.id, d.user_id, d.amount)}>
                             Approve
@@ -104,6 +110,10 @@ export default function AdminPaymentsPage() {
                             Reject
                           </Button>
                         </div>
+                      ) : (
+                        <Button size="sm" variant="secondary" onClick={() => handleDelete(d.id)} className="text-red-400 border-red-500/30 hover:bg-red-500/10">
+                          Delete
+                        </Button>
                       )}
                     </td>
                   </tr>

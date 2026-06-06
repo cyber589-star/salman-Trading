@@ -39,11 +39,18 @@ export async function rejectDeposit(depositId: string) {
   await sb.from("transactions").update({ status: "rejected", description: "Deposit rejected", updated_at: new Date().toISOString() }).eq("user_id", deposit.user_id).eq("type", "deposit").eq("amount", deposit.amount).eq("status", "pending");
 }
 
-export async function deletePendingDeposit(depositId: string, userId: string, amount: number) {
+export async function deleteDeposit(depositId: string) {
   const sb = await getSupabase();
-  const { error } = await sb.from("deposits").delete().eq("id", depositId).eq("user_id", userId).eq("status", "pending");
-  if (error) throw error;
-  await sb.from("transactions").delete().eq("user_id", userId).eq("type", "deposit").eq("amount", amount).eq("status", "pending");
+  await sb.from("deposits").delete().eq("id", depositId);
+}
+
+export async function deleteCustomer(customerId: string) {
+  const sb = await getSupabase();
+  await sb.from("profiles").delete().eq("id", customerId);
+  await sb.from("deposits").delete().eq("user_id", customerId);
+  await sb.from("investments").delete().eq("user_id", customerId);
+  await sb.from("transactions").delete().eq("user_id", customerId);
+  await sb.from("withdrawals").delete().eq("user_id", customerId);
 }
 
 export async function getAllWithdrawals() {

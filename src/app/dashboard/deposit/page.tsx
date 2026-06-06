@@ -25,13 +25,7 @@ export default function DepositPage() {
     setMyDeposits(data || []);
   };
   useEffect(() => { loadDeposits(); }, [user?.id]);
-  const handleCancel = async (id: string, amount: number) => {
-    const sb = await getSupabase();
-    await sb.from("deposits").delete().eq("id", id).eq("user_id", user?.id).eq("status", "pending");
-    await sb.from("transactions").delete().eq("user_id", user?.id).eq("type", "deposit").eq("amount", amount).eq("status", "pending");
-    toast("success", "Deposit cancelled");
-    loadDeposits();
-  };
+  const handleCancel = async (id: string, amount: number) => {};
 
   async function handleSubmit() {
     const numAmount = parseFloat(amount);
@@ -240,11 +234,7 @@ export default function DepositPage() {
                       }`}>
                         {d.status}
                       </span>
-                      {d.status === "pending" && (
-                        <button onClick={() => handleCancel(d.id, d.amount)} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 transition-colors">
-                          Cancel
-                        </button>
-                      )}
+
                     </div>
                   </div>
                 ))}
