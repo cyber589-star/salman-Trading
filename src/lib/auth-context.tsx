@@ -98,6 +98,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const existing = await sb.from("profiles").select("username").eq("username", username).maybeSingle();
       if (existing.data) { setIsLoading(false); return { success: false, error: "Username already taken" }; }
 
+      const existingMobile = await sb.from("profiles").select("id").eq("mobile", mobile).maybeSingle();
+      if (existingMobile.data) { setIsLoading(false); return { success: false, error: "Mobile number already registered" }; }
+
       const deviceId = generateDeviceId();
       const dc = await sb.from("profiles").select("id").eq("device_id", deviceId).maybeSingle();
       if (dc.data) { setIsLoading(false); return { success: false, error: "Account exists on this device" }; }
@@ -108,6 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: { data: { username, mobile } },
       });
       if (authError || !authData.user) { setIsLoading(false); return { success: false, error: authError?.message || "Registration failed" }; }
+
+      await fetch("/api/confirm-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: authData.user.id }),
+      });
 
       await sb.from("profiles").insert({
         id: authData.user.id, username, mobile, balance: 0, total_invested: 0, total_earnings: 0, role: "user", device_id: deviceId,

@@ -123,7 +123,7 @@ export default function LoginPage() {
             </Button>
 
             <p className="text-center text-xs text-slate-500">
-              All sessions are encrypted with 256-bit SSL technology.
+              Protected by 256-bit SSL encryption.
             </p>
           </form>
         </div>
