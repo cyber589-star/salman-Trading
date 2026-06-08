@@ -33,24 +33,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string): Promise<boolean> => {
     const sb = await getSupabase();
-    const { data: profile } = await sb.from("profiles").select("*").eq("id", userId).single();
-    if (!profile) return;
+    const { data: profile, error: pfErr } = await sb.from("profiles").select("*").eq("id", userId).single();
+    if (pfErr || !profile) return false;
     const [invRes, txRes] = await Promise.all([
       sb.from("investments").select("*").eq("user_id", userId).order("started_at", { ascending: false }),
       sb.from("transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
     ]);
     setUser({ ...profile, investments: invRes.data || [], transactions: txRes.data || [] } as UserProfile);
+    return true;
   }, []);
 
   useEffect(() => {
     const cached = localStorage.getItem("st_user");
     if (cached) {
-      try { setUser(JSON.parse(cached)); } catch {}
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.id) {
+          fetchProfile(parsed.id).then((p) => {
+            if (!p) { localStorage.removeItem("st_user"); setUser(null); }
+          });
+        }
+        setUser(parsed);
+      } catch {}
     }
     setIsLoading(false);
-  }, []);
+  }, [fetchProfile]);
 
   useEffect(() => {
     if (user) localStorage.setItem("st_user", JSON.stringify(user));
