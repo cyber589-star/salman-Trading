@@ -16,7 +16,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  deposit: (amount: number, method: string, proofFile?: File) => Promise<boolean>;
+  deposit: (amount: number, method: string, proofFile?: File) => Promise<string | true>;
   invest: (packageId: number) => Promise<boolean>;
   withdraw: (amount: number, accountNumber: string, accountName: string) => Promise<boolean>;
   updateProfile: (data: Partial<Profile>) => void;
@@ -100,24 +100,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user?.id) await fetchProfile(user.id);
   }, [user?.id, fetchProfile]);
 
-  const deposit = useCallback(async (amount: number, method: string, proofFile?: File): Promise<boolean> => {
-    if (!user) return false;
+  const deposit = useCallback(async (amount: number, method: string, proofFile?: File): Promise<string | true> => {
+    if (!user) return "Not logged in";
     const sb = await getSupabase();
     let proofUrl = "";
     if (proofFile) {
       const ext = proofFile.name.split(".").pop();
-      const { data: up } = await sb.storage.from("payment-proofs").upload(`${user.id}/${Date.now()}.${ext}`, proofFile);
+      const { data: up, error: upErr } = await sb.storage.from("payment-proofs").upload(`${user.id}/${Date.now()}.${ext}`, proofFile);
+      if (upErr) return "Upload failed: " + upErr.message;
       if (up) proofUrl = sb.storage.from("payment-proofs").getPublicUrl(up.path).data.publicUrl;
     }
     const { error } = await sb.from("deposits").insert({
       user_id: user.id, amount, method, proof_url: proofUrl, status: "pending", username: user.username,
     });
-    if (error) return false;
+    if (error) return "Deposit insert failed: " + error.message;
 
-    await sb.from("transactions").insert({
+    const { error: txErr } = await sb.from("transactions").insert({
       user_id: user.id, type: "deposit", amount, status: "pending", method,
       description: "Deposit pending approval",
     });
+    if (txErr) return "Transaction insert failed: " + txErr.message;
 
     await refreshUser();
     return true;

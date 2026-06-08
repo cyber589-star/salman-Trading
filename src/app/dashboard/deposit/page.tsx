@@ -38,14 +38,14 @@ export default function DepositPage() {
       return;
     }
     setIsSubmitting(true);
-    const success = await deposit(numAmount, "jazzcash", proofFile);
-    if (success) {
+    const result = await deposit(numAmount, "jazzcash", proofFile);
+    if (result === true) {
       toast("success", "Deposit request submitted!", "Your deposit is pending approval.");
       setAmount("");
       setProofFile(null);
       setStep("form");
     } else {
-      toast("error", "Failed to submit deposit");
+      toast("error", "Failed to submit deposit", typeof result === "string" ? result : undefined);
     }
     setIsSubmitting(false);
   }
