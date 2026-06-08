@@ -22,7 +22,8 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    const now = new Date().toISOString();
+    const now = Date.now();
+    const nowISO = new Date(now).toISOString();
     let processed = 0;
 
     for (const inv of investments || []) {
@@ -31,13 +32,17 @@ export async function GET(request: Request) {
         continue;
       }
 
+      // Skip if 24 hours haven't passed since last_earning_at
+      const lastEarning = new Date(inv.last_earning_at).getTime();
+      if (now - lastEarning < 24 * 60 * 60 * 1000) continue;
+
       const earning = Number(inv.daily_profit);
       const newDays = Number(inv.days_completed) + 1;
       const newStatus = newDays >= Number(inv.duration) ? "completed" : "active";
 
       await supabase.from("investments").update({
         days_completed: newDays,
-        last_earning_at: now,
+        last_earning_at: nowISO,
         status: newStatus,
       }).eq("id", inv.id);
 

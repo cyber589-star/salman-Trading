@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { formatNumber } from "@/lib/utils";
+import CountdownTimer from "@/components/countdown-timer";
 
 export default function EarningsPage() {
   const { user } = useAuth();
@@ -80,19 +81,22 @@ export default function EarningsPage() {
                         <p className="text-xs text-slate-400 mt-1">{progressPercent}% complete</p>
                       </div>
                     </div>
-                    <Progress value={Number(inv.days_completed)} max={Number(inv.duration)} className="mb-3" />
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
+                    <Progress value={Number(inv.days_completed)} max={Number(inv.duration)} className="mb-4" />
+                    <div className="grid grid-cols-4 gap-3 items-center">
+                      <div className="text-center">
                         <p className="text-xs text-slate-400">Daily</p>
                         <p className="text-sm font-semibold text-emerald-400">Rs {formatNumber(inv.daily_profit)}</p>
                       </div>
-                      <div>
+                      <div className="text-center">
                         <p className="text-xs text-slate-400">Earned</p>
                         <p className="text-sm font-semibold text-amber-400">Rs {formatNumber(earned)}</p>
                       </div>
-                      <div>
+                      <div className="text-center">
                         <p className="text-xs text-slate-400">Total</p>
                         <p className="text-sm font-semibold text-blue-400">Rs {formatNumber(inv.total_profit)}</p>
+                      </div>
+                      <div className="border-l border-slate-700/50 pl-3">
+                        <CountdownTimer lastEarningAt={inv.last_earning_at} />
                       </div>
                     </div>
                   </div>
