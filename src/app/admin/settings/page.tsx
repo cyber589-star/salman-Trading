@@ -62,6 +62,27 @@ export default function AdminSettingsPage() {
           ))}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Daily Earnings</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-400 mb-4">Manually trigger daily earnings for all active investments.</p>
+          <Button
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/earnings", {
+                  headers: { Authorization: "Bearer salman-trading-cron-2024" },
+                });
+                const data = await res.json();
+                if (res.ok) toast("success", `Earnings processed: ${data.processed} investments`);
+                else toast("error", data.error || "Failed");
+              } catch { toast("error", "Request failed"); }
+            }}
+          >
+            Run Daily Earnings Now
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

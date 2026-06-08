@@ -27,7 +27,7 @@ export async function approveDeposit(depositId: string, userId: string, amount: 
   const { error: balanceError } = await sb.from("profiles").update({ balance: currentBalance + toNum(amount) }).eq("id", userId);
   if (balanceError) throw balanceError;
 
-  await sb.from("transactions").update({ status: "completed", description: "Deposit approved", updated_at: new Date().toISOString() }).eq("user_id", userId).eq("type", "deposit").eq("amount", amount).eq("status", "pending");
+  await sb.from("transactions").update({ status: "completed", description: "Deposit approved" }).eq("user_id", userId).eq("type", "deposit").eq("amount", amount).eq("status", "pending");
 }
 
 export async function rejectDeposit(depositId: string) {
@@ -36,7 +36,7 @@ export async function rejectDeposit(depositId: string) {
   if (!deposit) throw new Error("Deposit not found");
   const { error } = await sb.from("deposits").update({ status: "rejected", updated_at: new Date().toISOString() }).eq("id", depositId);
   if (error) throw error;
-  await sb.from("transactions").update({ status: "rejected", description: "Deposit rejected", updated_at: new Date().toISOString() }).eq("user_id", deposit.user_id).eq("type", "deposit").eq("amount", deposit.amount).eq("status", "pending");
+  await sb.from("transactions").update({ status: "rejected", description: "Deposit rejected" }).eq("user_id", deposit.user_id).eq("type", "deposit").eq("amount", deposit.amount).eq("status", "pending");
 }
 
 export async function deleteDeposit(depositId: string) {

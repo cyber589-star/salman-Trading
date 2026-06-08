@@ -49,12 +49,6 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isAdminAuthed, setIsAdminAuthed] = useState(false);
-
-  useEffect(() => {
-    setIsAdminAuthed(localStorage.getItem("admin_authenticated") === "true");
-  }, []);
-
   return (
     <>
       <button
@@ -126,23 +120,7 @@ export function DashboardSidebar() {
               </Link>
             );
           })}
-          {isAdminAuthed && (
-            <Link
-              href="/admin"
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                pathname?.startsWith("/admin")
-                  ? "bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500"
-                  : "text-amber-400 hover:text-slate-200 hover:bg-white/5"
-              )}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              Admin Panel
-            </Link>
-          )}
+
         </nav>
 
         <div className="px-3 py-4 border-t border-slate-800 space-y-2">

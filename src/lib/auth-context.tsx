@@ -23,6 +23,10 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
+function toNum(v: any): number {
+  return typeof v === "number" ? v : parseFloat(v) || 0;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -139,6 +143,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user_id: user.id, type: "investment", amount: pkg.investment, status: "completed",
       description: `Investment in ${pkg.name} plan`,
     });
+
+    // Add first day earning immediately
+    const { data: currentProfile } = await sb.from("profiles").select("balance, total_earnings").eq("id", user.id).single();
+    if (currentProfile) {
+      const earning = toNum(pkg.dailyProfit);
+      await sb.from("profiles").update({
+        balance: toNum(currentProfile.balance) + earning,
+        total_earnings: toNum(currentProfile.total_earnings) + earning,
+      }).eq("id", user.id);
+      await sb.from("transactions").insert({
+        user_id: user.id, type: "earning", amount: earning, status: "completed",
+        description: `Daily profit from ${pkg.name}`,
+      });
+    }
 
     await refreshUser();
     return true;

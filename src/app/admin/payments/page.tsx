@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { getAllDeposits, approveDeposit, rejectDeposit, deleteDeposit } from "@/lib/admin-service";
 
 export default function AdminPaymentsPage() {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [filter, setFilter] = useState("pending");
+  const { toast } = useToast();
 
   const load = async () => {
     const data = await getAllDeposits();
@@ -19,13 +21,23 @@ export default function AdminPaymentsPage() {
   const filtered = deposits.filter((d) => filter === "all" ? true : d.status === filter);
 
   const handleApprove = async (id: string, userId: string, amount: number) => {
-    await approveDeposit(id, userId, amount);
-    await load();
+    try {
+      await approveDeposit(id, userId, amount);
+      toast("success", "Deposit approved!", "Balance has been updated.");
+      await load();
+    } catch (e: any) {
+      toast("error", "Approval failed", e?.message || "Unknown error");
+    }
   };
 
   const handleReject = async (id: string) => {
-    await rejectDeposit(id);
-    await load();
+    try {
+      await rejectDeposit(id);
+      toast("success", "Deposit rejected");
+      await load();
+    } catch (e: any) {
+      toast("error", "Reject failed", e?.message || "Unknown error");
+    }
   };
 
   const handleDelete = async (id: string) => {
