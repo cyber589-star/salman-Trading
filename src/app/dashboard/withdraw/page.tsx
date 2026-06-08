@@ -46,8 +46,8 @@ export default function WithdrawPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const numAmount = parseFloat(amount);
-    if (!numAmount || numAmount < 1000) {
-      toast("error", "Invalid amount", "Minimum withdrawal is Rs 1,000.");
+    if (!numAmount || numAmount < 60) {
+      toast("error", "Invalid amount", "Minimum withdrawal is Rs 60.");
       return;
     }
     if ((user?.balance || 0) < numAmount) {
@@ -71,14 +71,14 @@ export default function WithdrawPage() {
     setIsSubmitting(false);
   }
 
-  const quickAmounts = [1000, 2000, 5000, 10000, 20000];
+  const quickAmounts = [60, 200, 500, 1000, 5000];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Withdraw Funds</h1>
         <p className="text-slate-400 text-sm mt-1">
-          Available balance: Rs {formatNumber(user?.balance || 0)} &bull; Min withdrawal: Rs 1,000
+          Available balance: Rs {formatNumber(user?.balance || 0)} &bull; Min withdrawal: Rs 60
         </p>
       </div>
 

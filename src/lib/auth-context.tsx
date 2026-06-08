@@ -179,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: settings } = await sb.from("settings").select("*");
     const sm: Record<string, string> = {};
     (settings || []).forEach((s: any) => { sm[s.key] = s.value; });
-    const minW = parseFloat(sm.min_withdrawal || "1000");
+    const minW = parseFloat(sm.min_withdrawal || "60");
     if (amount < minW || user.balance < amount) return false;
 
     const { data: active } = await sb.from("investments").select("id").eq("user_id", user.id).eq("status", "active").limit(1);
