@@ -146,11 +146,11 @@ export default function WithdrawPage() {
                   <Input
                     id="w-amount"
                     type="number"
-                    placeholder="Enter amount (min Rs 1,000)"
+                    placeholder="Enter amount (min Rs 60)"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="mt-1.5"
-                    min={1000}
+                    min={60}
                   />
                   <div className="flex flex-wrap gap-2 mt-3">
                     {quickAmounts.map((a) => (
